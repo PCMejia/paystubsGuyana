@@ -4,8 +4,7 @@ const { parse } = require('aws-multipart-parser');
 // Configura S3 con tus variables
 const s3 = new AWS.S3({
   accessKeyId: process.env.MY_AWS_ACCESS_KEY,
-  secretAccessKey: process.env.MY_AWS_SECRET_KEY,
-  region: 'us-east-1'
+  secretAccessKey: process.env.MY_AWS_SECRET_KEY
 });
 
 exports.handler = async (event) => {
