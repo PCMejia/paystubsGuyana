@@ -1,8 +1,9 @@
 {
-  "name": "paystub-backend",
+  "name": "paystub-generator",
   "version": "1.0.0",
   "dependencies": {
     "aws-sdk": "^2.1238.0",
-    "aws-multipart-parser": "^0.1.2"
+    "aws-multipart-parser": "^0.1.2",
+    "node-fetch": "^3.3.2"
   }
 }
