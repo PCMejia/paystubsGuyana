@@ -6,7 +6,7 @@ const fetch = require('node-fetch'); // Ahora funcionará en deploy
 const s3 = new AWS.S3({
   accessKeyId: process.env.MY_AWS_ACCESS_KEY,
   secretAccessKey: process.env.MY_AWS_SECRET_KEY,
-  region: 'us-east-1'
+  region: 'us-east-2'
 });
 
 exports.handler = async (event) => {
