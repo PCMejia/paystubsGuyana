@@ -145,7 +145,12 @@
       try {
         showStatus('File is processing...', 'uploading');
 
-        const response = await fetch('https://your-make-com-endpoint.com/upload', {
+        const response = await fetch('/.netlify/functions/uploadToS3', {
+        method: 'POST',
+        body: formData
+        });
+
+        const makeResponse = await fetch('https://your-make-com-endpoint.com/upload', {
           method: 'POST',
           body: formData,
           headers: {
