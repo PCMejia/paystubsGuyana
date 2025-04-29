@@ -1,0 +1,6 @@
+[build]
+  publish = "public"  # Carpeta donde está tu frontend
+  functions = "functions"  # Carpeta de funciones serverless
+
+[functions]
+  node_bundler = "esbuild"
