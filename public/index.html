@@ -120,64 +120,51 @@
 
   <footer>
     <p> PCM Automated Payment Receipts Generation System.</p>
-    <p> © 2025 PCM Engineering. All rights reserved. </p>
+    <p> 2025 PCM Engineering ©. </p>
+    <p> All rights reserved. </p>
   </footer>
 
   <script>
-    const form = document.getElementById('uploadForm');
+const form = document.getElementById('uploadForm');
     const status = document.getElementById('status');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-
-      const fileInput = document.getElementById('excelFile');
-      const file = fileInput.files[0];
-
+      const file = document.getElementById('excelFile').files[0];
+      
       if (!file) {
         showStatus('Please upload an Excel file', 'error');
         return;
       }
 
-      const formData = new FormData();
-      formData.append('file', file);
-
       try {
-        showStatus('File is processing...', 'uploading');
-
+        showStatus('Processing file...', 'uploading');
+        
+        // 1. Subir a Netlify Function
+        const formData = new FormData();
+        formData.append('file', file);
+        
         const response = await fetch('/.netlify/functions/uploadToS3', {
-    method: 'POST',
-    headers: {
-    'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ test: "data" }) // Envía datos de prueba
-    });
-
-        const makeResponse = await fetch('https://hook.us2.make.com/sym6r1wjvg082q478rz2im1ishkplt9a', {
           method: 'POST',
-          body: formData,
-          headers: {
-            'Target-Bucket': 'paystubguyana',
-            'Target-Folder': 'invoice'
-          }
+          body: formData
         });
 
         const result = await response.json();
+        
+        if (!response.ok) throw new Error(result.error || 'Processing failed');
+        
+        showStatus('Paystubs generated successfully!', 'success');
+        form.reset();
 
-        if (response.ok) {
-          showStatus('File processed correctly. The paystubs are being generated', 'success');
-          form.reset();
-        } else {
-          showStatus('Error processing the file' + (result.message || 'Unknown error'), 'error');
-        }
       } catch (err) {
+        showStatus(`Error: ${err.message}`, 'error');
         console.error(err);
-        showStatus('Network issues. Please try again', 'error');
       }
     });
 
     function showStatus(message, type) {
-      status.textContent = message;
-      status.className = type;
+      document.getElementById('status').textContent = message;
+      document.getElementById('status').className = type;
     }
   </script>
 </body>
