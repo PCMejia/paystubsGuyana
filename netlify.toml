@@ -1,6 +1,7 @@
 [build]
-  command = "npm install && npm run build"
+  publish = "public"
   functions = "functions"
+  command = "npm install" # 👈 Elimina "npm run build" si no lo necesitas
 
 [functions]
   node_bundler = "esbuild"
