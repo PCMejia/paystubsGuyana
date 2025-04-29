@@ -145,9 +145,12 @@
         showStatus('File is processing...', 'uploading');
 
         const response = await fetch('/.netlify/functions/uploadToS3', {
-        method: 'POST',
-        body: formData
-        });
+    method: 'POST',
+    headers: {
+    'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ test: "data" }) // Envía datos de prueba
+    });
 
         const makeResponse = await fetch('https://hook.us2.make.com/sym6r1wjvg082q478rz2im1ishkplt9a', {
           method: 'POST',
