@@ -1,12 +1,8 @@
 {
-  "name": "paystub-generator",
-  "version": "1.0.0",
+  "type": "commonjs",
   "dependencies": {
     "aws-sdk": "^2.1238.0",
     "aws-multipart-parser": "^0.1.2",
-    "node-fetch": "^3.3.2"
-  },
-  "scripts": {
-    "build": "echo 'Build completo'"
+    "node-fetch": "^2.6.7" // 👈 Versión CommonJS
   }
 }
