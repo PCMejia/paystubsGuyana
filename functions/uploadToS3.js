@@ -13,15 +13,7 @@ exports.handler = async (event) => {
     const { file } = parse(event);
     if (!file) throw new Error('No file uploaded');
 
-    // Obtener mes y año actual para el nombre de la carpeta
-    const now = new Date();
-    const month = (now.getMonth() + 1).toString().padStart(2, '0'); // Mes (01-12)
-    const year = now.getFullYear();
-    const folderName = `paystubs-${month}-${year}`;
-
-    // Modificado: Incluir la carpeta en el s3Key
-    const s3Key = `${folderName}/${Date.now()}_${file.filename.replace(/\s+/g, '_')}`;
-    
+    const s3Key = `invoice/${Date.now()}_${file.filename.replace(/\s+/g, '_')}`;
     await new AWS.S3({
       accessKeyId: process.env.MY_AWS_ACCESS_KEY,
       secretAccessKey: process.env.MY_AWS_SECRET_KEY,
@@ -44,11 +36,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ 
-        success: true,
-        folder: folderName,
-        s3_key: s3Key 
-      })
+      body: JSON.stringify({ success: true })
     };
   } catch (err) {
     return {
