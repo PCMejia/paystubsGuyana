@@ -1,48 +1,179 @@
-const AWS = require('aws-sdk');
-const { v4: uuidv4 } = require('uuid');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Paystubs Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0;
+      background-color: #ffffff;
+    }
+    .header {
+      background-color: #003366;
+      padding: 30px 0;
+      text-align: center;
+      color: white;
+    }
+    .pcm {
+      color: white;
+      font-size: 32px;
+      font-weight: bold;
+      margin: 0;
+    }
+    .engineering {
+      color: #FF6600;
+      font-size: 24px;
+      margin: 5px 0 0 0;
+    }
+    .paystubs {
+      color: white;
+      font-size: 20px;
+      margin: 15px 0 0 0;
+      font-weight: normal;
+    }
+    .orange-line {
+      height: 3px;
+      background-color: #FF6600;
+      width: 100px;
+      margin: 15px auto 0 auto;
+    }
+    .upload-container {
+      padding: 40px;
+      background-color: white;
+    }
+    #uploadForm {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    #excelFile {
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #FF6600;
+      color: white;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #E55C00;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .success {
+      background-color: #dff0d8;
+      color: #3c763d;
+      border: 1px solid #d6e9c6;
+    }
+    .error {
+      background-color: #f2dede;
+      color: #a94442;
+      border: 1px solid #ebccd1;
+    }
+    .uploading {
+      background-color: #d9edf7;
+      color: #31708f;
+      border: 1px solid #bce8f1;
+    }
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      color: #777;
+      font-size: 14px;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <p class="pcm">PCM</p>
+    <p class="engineering">ENGINEERING</p>
+    <p class="paystubs">Paystubs Generator</p>
+    <div class="orange-line"></div>
+  </div>
 
-exports.handler = async (event, context) => {
-  try {
-    // Configurar AWS S3
-    const s3 = new AWS.S3({
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      region: process.env.AWS_REGION
+  <div class="upload-container">
+    <form id="uploadForm">
+      <input type="file" id="excelFile" accept=".xlsx,.xls" required>
+      <button type="submit">GENERATE PAYSTUBS</button>
+    </form>
+    <p id="status"></p>
+  </div>
+
+  <footer>
+    <p> PCM Automated Payment Receipts Generation System.</p>
+    <p> © 2025 PCM Engineering. </p>
+    <p> All rights reserved. </p>
+  </footer>
+
+  <script>
+    const form = document.getElementById('uploadForm');
+    const status = document.getElementById('status');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const file = document.getElementById('excelFile').files[0];
+      
+      if (!file) {
+        showStatus('Please upload an Excel file', 'error');
+        return;
+      }
+
+      try {
+        showStatus('Processing file...', 'uploading');
+        
+        // Obtener mes y año actual para la carpeta
+        const now = new Date();
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const year = now.getFullYear();
+        const folderName = `paystubs-${month}-${year}`;
+        
+        // Crear FormData y añadir archivo + metadatos
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folderName', folderName); // Enviamos el nombre de la carpeta
+        
+        // Subir a Netlify Function
+        const response = await fetch('/.netlify/functions/uploadToS3', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) throw new Error(result.error || 'Processing failed');
+        
+        showStatus('Paystubs generated successfully!', 'success');
+        form.reset();
+
+      } catch (err) {
+        showStatus(`Error: ${err.message}`, 'error');
+        console.error(err);
+      }
     });
 
-    // Parsear los datos del formulario
-    const formData = event.body;
-    const file = event.files && event.files[0];
-    const folderName = event.body && event.body.folderName;
-    
-    if (!file) {
-      throw new Error('No file uploaded');
+    function showStatus(message, type) {
+      document.getElementById('status').textContent = message;
+      document.getElementById('status').className = type;
     }
-
-    // Parámetros para la subida a S3
-    const params = {
-      Bucket: process.env.S3_BUCKET_NAME,
-      Key: `${folderName}/${file.originalFilename || uuidv4()}.xlsx`, // Guardar en la carpeta con nombre mes-año
-      Body: file.content,
-      ContentType: file.contentType
-    };
-
-    // Subir el archivo a S3
-    const data = await s3.upload(params).promise();
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        message: 'File uploaded successfully',
-        location: data.Location
-      })
-    };
-  } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        error: err.message
-      })
-    };
-  }
-};
+  </script>
+</body>
+</html>
