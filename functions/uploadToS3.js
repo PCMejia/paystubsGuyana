@@ -25,7 +25,7 @@ exports.handler = async (event) => {
       ContentType: file.contentType
     }).promise();
 
-    const makeResponse = await fetch('https://hook.us2.make.com/...', {
+    const makeResponse = await fetch('https://hook.us2.make.com/sym6r1wjvg082q478rz2im1ishkplt9a', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
