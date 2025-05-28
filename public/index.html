@@ -125,7 +125,7 @@
   </footer>
 
   <script>
-const form = document.getElementById('uploadForm');
+    const form = document.getElementById('uploadForm');
     const status = document.getElementById('status');
 
     form.addEventListener('submit', async (e) => {
@@ -140,10 +140,18 @@ const form = document.getElementById('uploadForm');
       try {
         showStatus('Processing file...', 'uploading');
         
-        // 1. Subir a Netlify Function
+        // Obtener mes y año actual para la carpeta
+        const now = new Date();
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const year = now.getFullYear();
+        const folderName = `paystubs-${month}-${year}`;
+        
+        // Crear FormData y añadir archivo + metadatos
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('folderName', folderName); // Enviamos el nombre de la carpeta
         
+        // Subir a Netlify Function
         const response = await fetch('/.netlify/functions/uploadToS3', {
           method: 'POST',
           body: formData
