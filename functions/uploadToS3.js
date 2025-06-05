@@ -17,7 +17,7 @@ exports.handler = async (event) => {
     const { file } = parse(event);
     if (!file) throw new Error('No file uploaded');
 
-    // Verificar que el archivo sea un Excel
+    // Verificar que el archivo sea un Excel YEAH
     if (!['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'].includes(file.contentType)) {
       throw new Error('El archivo debe ser un documento Excel (.xlsx o .xls)');
     }
