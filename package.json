@@ -4,8 +4,8 @@
     "aws-sdk": "^2.1238.0",
     "aws-multipart-parser": "^0.1.2",
     "node-fetch": "^2.6.7",
-    "xlsx": "^0.18.5",
-    "docx-pdf": "^0.1.1",
+    "pdf-lib": "^1.17.1",
+    "xlsx": "^0.18.5"
     "fs": "0.0.1-security",
     "path": "^0.12.7"
   }
