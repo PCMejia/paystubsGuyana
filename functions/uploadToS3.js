@@ -1,7 +1,7 @@
 const AWS = require('aws-sdk');
 const { parse } = require('aws-multipart-parser');
 const XLSX = require('xlsx');
-const { convert } = require('docx-pdf');
+const { PDFDocument, rgb } = require('pdf-lib');
 const fs = require('fs');
 const path = require('path');
 
@@ -37,34 +37,30 @@ exports.handler = async (event) => {
     const worksheet = workbook.Sheets[firstSheetName];
     const rows = XLSX.utils.sheet_to_json(worksheet);
 
-    // 3. Cargar plantilla Word desde S3
-    const templateKey = 'plantillas/minuta_template.docx';
+    // 3. Cargar plantilla PDF desde S3
+    const templateKey = 'plantillas/minuta_template.pdf'; // Cambiado a PDF
     const templateResponse = await s3.getObject({
       Bucket: 'paystubguyana',
       Key: templateKey
     }).promise();
 
     // Guardar plantilla temporalmente
-    const templatePath = '/tmp/minuta_template.docx';
+    const templatePath = '/tmp/minuta_template.pdf';
     fs.writeFileSync(templatePath, templateResponse.Body);
 
     // 4. Procesar cada fila del Excel
     const generatedFiles = [];
     for (const row of rows) {
       try {
-        // Crear archivo temporal Word modificado
-        const modifiedDocxPath = await replaceTemplatePlaceholders(templatePath, row);
-        
-        // Convertir a PDF
-        const pdfPath = await convertDocxToPdf(modifiedDocxPath);
-        const pdfBuffer = fs.readFileSync(pdfPath);
+        // Crear PDF modificado
+        const pdfBytes = await fillPdfTemplate(templatePath, row);
         
         // Subir PDF a S3 en carpeta invoice/
         const pdfS3Key = `invoice/${row.ID || Date.now()}.pdf`;
         await s3.upload({
           Bucket: 'paystubguyana',
           Key: pdfS3Key,
-          Body: pdfBuffer,
+          Body: pdfBytes,
           ContentType: 'application/pdf'
         }).promise();
         
@@ -73,10 +69,6 @@ exports.handler = async (event) => {
           s3Key: pdfS3Key,
           status: 'success'
         });
-
-        // Limpiar archivos temporales
-        fs.unlinkSync(modifiedDocxPath);
-        fs.unlinkSync(pdfPath);
       } catch (error) {
         generatedFiles.push({
           id: row.ID || 'N/A',
@@ -106,20 +98,35 @@ exports.handler = async (event) => {
   }
 };
 
-async function replaceTemplatePlaceholders(templatePath, data) {
-  // Implementación simplificada - en producción usa docx-templates
-  const modifiedPath = `/tmp/modified_${data.ID || Date.now()}.docx`;
-  fs.copyFileSync(templatePath, modifiedPath);
-  return modifiedPath;
-}
-
-async function convertDocxToPdf(docxPath) {
-  return new Promise((resolve, reject) => {
-    const pdfPath = docxPath.replace('.docx', '.pdf');
-    
-    convert(docxPath, pdfPath, (err, result) => {
-      if (err) return reject(err);
-      resolve(pdfPath);
-    });
+async function fillPdfTemplate(templatePath, data) {
+  // 1. Cargar plantilla PDF
+  const templateBytes = fs.readFileSync(templatePath);
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  
+  // 2. Obtener la primera página
+  const pages = pdfDoc.getPages();
+  const firstPage = pages[0];
+  
+  // 3. Obtener dimensiones de la página
+  const { width, height } = firstPage.getSize();
+  
+  // 4. Insertar datos en posiciones específicas (ajusta estas coordenadas)
+  firstPage.drawText(data.ID || '', {
+    x: 100,  // Ajusta posición X
+    y: height - 150,  // Ajusta posición Y
+    size: 12,
+    color: rgb(0, 0, 0),
   });
+  
+  firstPage.drawText(data.Nombre || '', {
+    x: 100,
+    y: height - 180,
+    size: 12,
+    color: rgb(0, 0, 0),
+  });
+
+  // Agrega más campos según tu plantilla...
+  
+  // 5. Guardar PDF modificado
+  return await pdfDoc.save();
 }
