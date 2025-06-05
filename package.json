@@ -5,7 +5,7 @@
     "aws-multipart-parser": "^0.1.2",
     "node-fetch": "^2.6.7",
     "pdf-lib": "^1.17.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
     "fs": "0.0.1-security",
     "path": "^0.12.7"
   }
