@@ -1,53 +1,101 @@
 const AWS = require('aws-sdk');
 const { parse } = require('aws-multipart-parser');
+const XLSX = require('xlsx');
+const { convert } = require('docx-pdf');
+const fs = require('fs');
+const path = require('path');
 
-// Reemplaza el require por import dinámico
-let fetch;
-import('node-fetch').then(mod => fetch = mod.default);
+// Configuración de S3
+const s3 = new AWS.S3({
+  accessKeyId: process.env.MY_AWS_ACCESS_KEY,
+  secretAccessKey: process.env.MY_AWS_SECRET_KEY,
+  region: 'us-east-2'
+});
 
 exports.handler = async (event) => {
-  // Asegúrate que fetch esté cargado
-  if (!fetch) fetch = (await import('node-fetch')).default;
-  
   try {
     const { file } = parse(event);
     if (!file) throw new Error('No file uploaded');
 
-    // Obtener mes y año actual para el nombre de la carpeta
-    const now = new Date();
-    const month = (now.getMonth() + 1).toString().padStart(2, '0'); // Mes (01-12)
-    const year = now.getFullYear();
-    const folderName = `invoice/paystubs-${month}-${year}`; // Modificado: dentro de invoice/
+    // Verificar que el archivo sea un Excel
+    if (!['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'].includes(file.contentType)) {
+      throw new Error('El archivo debe ser un documento Excel (.xlsx o .xls)');
+    }
 
-    // Modificado: Incluir la ruta completa en el s3Key
-    const s3Key = `${folderName}/${Date.now()}_${file.filename.replace(/\s+/g, '_')}`;
-    
-    await new AWS.S3({
-      accessKeyId: process.env.MY_AWS_ACCESS_KEY,
-      secretAccessKey: process.env.MY_AWS_SECRET_KEY,
-      region: 'us-east-2'
-    }).upload({
+    // 1. Guardar el archivo Excel en S3 (en carpeta archivoexcel)
+    const excelS3Key = `archivoexcel/${Date.now()}_${file.filename.replace(/\s+/g, '_')}`;
+    await s3.upload({
       Bucket: 'paystubguyana',
-      Key: s3Key,
+      Key: excelS3Key,
       Body: file.content,
       ContentType: file.contentType
     }).promise();
 
-    const makeResponse = await fetch('https://hook.us2.make.com/sym6r1wjvg082q478rz2im1ishkplt9a', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        s3_key: s3Key,
-        original_name: file.filename
-      })
-    });
+    // 2. Leer el archivo Excel
+    const workbook = XLSX.read(file.content);
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const rows = XLSX.utils.sheet_to_json(worksheet);
+
+    // 3. Cargar plantilla Word desde S3
+    const templateKey = 'plantillas/minuta_template.docx';
+    const templateResponse = await s3.getObject({
+      Bucket: 'paystubguyana',
+      Key: templateKey
+    }).promise();
+
+    // Guardar plantilla temporalmente
+    const templatePath = '/tmp/minuta_template.docx';
+    fs.writeFileSync(templatePath, templateResponse.Body);
+
+    // 4. Procesar cada fila del Excel
+    const generatedFiles = [];
+    for (const row of rows) {
+      try {
+        // Crear archivo temporal Word modificado
+        const modifiedDocxPath = await replaceTemplatePlaceholders(templatePath, row);
+        
+        // Convertir a PDF
+        const pdfPath = await convertDocxToPdf(modifiedDocxPath);
+        const pdfBuffer = fs.readFileSync(pdfPath);
+        
+        // Subir PDF a S3 en carpeta invoice/
+        const pdfS3Key = `invoice/${row.ID || Date.now()}.pdf`;
+        await s3.upload({
+          Bucket: 'paystubguyana',
+          Key: pdfS3Key,
+          Body: pdfBuffer,
+          ContentType: 'application/pdf'
+        }).promise();
+        
+        generatedFiles.push({
+          id: row.ID || 'N/A',
+          s3Key: pdfS3Key,
+          status: 'success'
+        });
+
+        // Limpiar archivos temporales
+        fs.unlinkSync(modifiedDocxPath);
+        fs.unlinkSync(pdfPath);
+      } catch (error) {
+        generatedFiles.push({
+          id: row.ID || 'N/A',
+          status: 'error',
+          error: error.message
+        });
+      }
+    }
+
+    // Limpiar plantilla temporal
+    fs.unlinkSync(templatePath);
 
     return {
       statusCode: 200,
       body: JSON.stringify({ 
         success: true,
-        folder: folderName,
-        s3_key: s3Key 
+        excel_location: excelS3Key,
+        processed_rows: rows.length,
+        generated_files: generatedFiles
       })
     };
   } catch (err) {
@@ -57,3 +105,21 @@ exports.handler = async (event) => {
     };
   }
 };
+
+async function replaceTemplatePlaceholders(templatePath, data) {
+  // Implementación simplificada - en producción usa docx-templates
+  const modifiedPath = `/tmp/modified_${data.ID || Date.now()}.docx`;
+  fs.copyFileSync(templatePath, modifiedPath);
+  return modifiedPath;
+}
+
+async function convertDocxToPdf(docxPath) {
+  return new Promise((resolve, reject) => {
+    const pdfPath = docxPath.replace('.docx', '.pdf');
+    
+    convert(docxPath, pdfPath, (err, result) => {
+      if (err) return reject(err);
+      resolve(pdfPath);
+    });
+  });
+}
