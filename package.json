@@ -1,9 +1,8 @@
-"dependencies": {
-  "aws-sdk": "^2.x",
-  "xlsx": "^0.x",
-  "pizzip": "^3.x",
-  "docxtemplater": "^3.x",
-  "fs-extra": "^10.x",
-  "tmp": "^0.x",
-  "libreoffice-convert": "^1.x"
+{
+  "type": "commonjs",
+  "dependencies": {
+    "aws-sdk": "^2.1238.0",
+    "aws-multipart-parser": "^0.1.2",
+    "node-fetch": "^2.6.7"
+  }
 }
