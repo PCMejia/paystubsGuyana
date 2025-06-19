@@ -1,7 +1,7 @@
 const AWS = require('aws-sdk');
 const { parse } = require('aws-multipart-parser');
 
-// Reemplaza el require por import dinámico
+// Reemplaza el require por import dinámico.
 let fetch;
 import('node-fetch').then(mod => fetch = mod.default);
 
